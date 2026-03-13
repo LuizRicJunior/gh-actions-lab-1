@@ -9,16 +9,10 @@ env:
   IMAGE_NAME: lab-app
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
-    outputs:
-      image: ${{ steps.build.outputs.image }}
-
     steps:
-
       - uses: actions/checkout@v4
 
       - name: login acr
@@ -29,43 +23,41 @@ jobs:
           password: ${{ secrets.ACR_PASS }}
 
       - name: build image
-        id: build
         run: |
+          set -Eeuo pipefail
+          TAG=$(echo "$GITHUB_SHA" | head -c7)
+          IMAGE="${{ secrets.ACR_LOGIN }}/lab-app:$TAG"
 
-          TAG=$(echo $GITHUB_SHA | head -c7)
+          docker build -t "$IMAGE" .
+          docker tag "$IMAGE" "${{ secrets.ACR_LOGIN }}/lab-app:latest"
+          docker push "${{ secrets.ACR_LOGIN }}/lab-app" --all-tags
 
-          IMAGE=${{ secrets.ACR_LOGIN }}/lab-app:$TAG
-
-          docker build -t $IMAGE .
-
-          docker tag $IMAGE ${{ secrets.ACR_LOGIN }}/lab-app:latest
-
-          docker push ${{ secrets.ACR_LOGIN }}/lab-app --all-tags
-
-          echo $IMAGE > image.txt
+          echo "$IMAGE" > image.txt
 
       - uses: actions/upload-artifact@v4
         with:
           name: image
           path: image.txt
 
-deploy:
-  needs: build
-  runs-on: self-hosted
+  deploy:
+    needs: build
+    runs-on: self-hosted
 
-  steps:
-    - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-    - uses: actions/download-artifact@v4
-      with:
-        name: image
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
 
-    - run: |
-        IMAGE=$(cat image.txt)
+      - name: deploy
+        run: |
+          set -Eeuo pipefail
+          IMAGE=$(cat image.txt)
 
-        export ACR_LOGIN_SERVER=$(echo "$IMAGE" | cut -d'/' -f1)
-        export IMAGE_NAME=$(echo "$IMAGE" | cut -d'/' -f2 | cut -d':' -f1)
-        export IMAGE_TAG=$(echo "$IMAGE" | cut -d':' -f2)
+          export ACR_LOGIN_SERVER=$(echo "$IMAGE" | cut -d'/' -f1)
+          export IMAGE_NAME=$(echo "$IMAGE" | cut -d'/' -f2 | cut -d':' -f1)
+          export IMAGE_TAG=$(echo "$IMAGE" | cut -d':' -f2)
 
-        chmod +x ./deploy.sh
-        ./deploy.sh
+          chmod +x ./deploy.sh
+          ./deploy.sh
