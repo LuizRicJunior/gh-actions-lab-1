@@ -1,0 +1,12 @@
+services:
+  lab_service:
+    image: ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}
+    container_name: lab_service
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      - SERVICE_NAME=single-container
+
+    restart: unless-stopped

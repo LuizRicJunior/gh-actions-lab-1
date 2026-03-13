@@ -1,0 +1,74 @@
+name: build-deploy-lab
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: lab-app
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: login acr
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_LOGIN }}
+          username: ${{ secrets.ACR_USER }}
+          password: ${{ secrets.ACR_PASS }}
+
+      - name: build image
+        id: build
+        run: |
+
+          TAG=$(echo $GITHUB_SHA | head -c7)
+
+          IMAGE=${{ secrets.ACR_LOGIN }}/lab-app:$TAG
+
+          docker build -t $IMAGE .
+
+          docker tag $IMAGE ${{ secrets.ACR_LOGIN }}/lab-app:latest
+
+          docker push ${{ secrets.ACR_LOGIN }}/lab-app --all-tags
+
+          echo $IMAGE > image.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image
+          path: image.txt
+
+  deploy:
+
+    needs: build
+
+    runs-on: lab-runner
+
+    steps:
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+
+      - run: |
+
+          IMAGE=$(cat image.txt)
+
+          export ACR_LOGIN_SERVER=$(echo $IMAGE | cut -d'/' -f1)
+          export IMAGE_NAME=$(echo $IMAGE | cut -d'/' -f2 | cut -d':' -f1)
+          export IMAGE_TAG=$(echo $IMAGE | cut -d':' -f2)
+
+          cd /opt/deploy/lab
+
+          ./deploy.sh
