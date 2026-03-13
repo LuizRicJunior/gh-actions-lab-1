@@ -13,7 +13,7 @@ services:
     image: ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}
     container_name: two_lab_service
     ports:
-      - "8000:8001"
+      - "8001:8000"
     environment:
       - SERVICE_NAME=single-container
     restart: unless-stopped
@@ -22,7 +22,7 @@ services:
     image: ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}
     container_name: three_lab_service
     ports:
-      - "8000:8002"
+      - "8002:8000"
     environment:
       - SERVICE_NAME=single-container
     restart: unless-stopped
