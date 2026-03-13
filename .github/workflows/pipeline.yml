@@ -49,26 +49,23 @@ jobs:
           name: image
           path: image.txt
 
-  deploy:
+deploy:
+  needs: build
+  runs-on: self-hosted
 
-    needs: build
+  steps:
+    - uses: actions/checkout@v4
 
-    runs-on: lab-runner
+    - uses: actions/download-artifact@v4
+      with:
+        name: image
 
-    steps:
+    - run: |
+        IMAGE=$(cat image.txt)
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: image
+        export ACR_LOGIN_SERVER=$(echo "$IMAGE" | cut -d'/' -f1)
+        export IMAGE_NAME=$(echo "$IMAGE" | cut -d'/' -f2 | cut -d':' -f1)
+        export IMAGE_TAG=$(echo "$IMAGE" | cut -d':' -f2)
 
-      - run: |
-
-          IMAGE=$(cat image.txt)
-
-          export ACR_LOGIN_SERVER=$(echo $IMAGE | cut -d'/' -f1)
-          export IMAGE_NAME=$(echo $IMAGE | cut -d'/' -f2 | cut -d':' -f1)
-          export IMAGE_TAG=$(echo $IMAGE | cut -d':' -f2)
-
-          cd /opt/deploy/lab
-
-          ./deploy.sh
+        chmod +x ./deploy.sh
+        ./deploy.sh
